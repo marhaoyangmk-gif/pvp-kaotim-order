@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PVP × Mr Kaotim — 在线点单</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--pk:#e91e8c;--pkd:#c0166f;--pkl:#fce4f3;--bk:#1a1a1a;--bk2:#2a2a2a}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;max-width:480px;margin:0 auto;min-height:100vh}
+
+.header{background:var(--bk);padding:18px 16px 14px;text-align:center;border-bottom:3px solid var(--pk)}
+.header h1{font-size:20px;font-weight:500;color:#fff;margin-bottom:2px}
+.header .sub{font-size:11px;color:#aaa;margin-bottom:8px}
+.badge{display:inline-block;background:var(--pk);color:#fff;border-radius:20px;padding:3px 11px;font-size:11px;margin:2px}
+.hours-status{margin-top:8px;font-size:12px;font-weight:500}
+.hours-status.open{color:#4caf50}
+.hours-status.closed{color:#ff5252}
+.closed-banner{background:#1a1a1a;color:#ff5252;text-align:center;padding:10px 16px;font-size:13px;font-weight:500;border-bottom:2px solid #ff5252}
+
+.search-wrap{padding:10px 16px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:11;display:flex;align-items:center;gap:8px}
+.search-wrap input{flex:1;padding:9px 12px 9px 34px;border:1px solid #ddd;border-radius:20px;font-size:14px;font-family:inherit;background:#f9f9f9;color:#1a1a1a}
+.search-wrap input:focus{outline:none;border-color:var(--pk);background:#fff}
+.search-icon{position:absolute;left:28px;color:#aaa;font-size:14px;pointer-events:none}
+.search-clear{background:none;border:none;color:#aaa;font-size:18px;cursor:pointer;padding:0 2px;flex-shrink:0;display:none}
+
+.tab-bar{display:flex;background:var(--bk2);overflow-x:auto;scrollbar-width:none;border-bottom:1px solid #333;position:sticky;top:53px;z-index:10}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{padding:11px 13px;font-size:12px;font-weight:500;color:#888;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;flex-shrink:0}
+.tab.active{color:var(--pk);border-bottom-color:var(--pk)}
+
+.page{display:none}.page.active{display:block}
+.section-title{padding:11px 16px 7px;font-size:11px;font-weight:500;color:#888;background:#f0f0f0;letter-spacing:.6px;text-transform:uppercase;border-bottom:1px solid #e0e0e0;border-top:1px solid #e0e0e0}
+
+.menu-item{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid #f0f0f0;gap:8px;background:#fff}
+.menu-item.soldout{opacity:.4;pointer-events:none}
+.item-left{flex:1}
+.item-name{font-size:13px;color:#1a1a1a;font-weight:400;line-height:1.4}
+.item-tags{margin-top:3px;display:flex;gap:4px;flex-wrap:wrap}
+.tag{font-size:10px;padding:1px 6px;border-radius:10px;font-weight:500}
+.tag.spicy{background:#ffe0e0;color:#c62828}
+.tag.recommended{background:#fff8e1;color:#f57f17}
+.tag.new{background:#e8f5e9;color:#2e7d32}
+.tag.soldout{background:#eee;color:#999}
+.item-price{font-size:13px;font-weight:500;color:var(--pk);white-space:nowrap;min-width:52px;text-align:right}
+.qty-ctrl{display:flex;align-items:center;gap:5px}
+.qty-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--pk);background:transparent;color:var(--pk);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding-bottom:1px}
+.qty-btn:active{background:var(--pkl)}
+.qty-num{font-size:13px;min-width:18px;text-align:center;font-weight:600;color:#1a1a1a}
+
+/* BLIND BOX */
+.blindbox-bar{padding:14px 16px;background:#fff;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bb-btn{background:var(--pk);color:#fff;border:none;border-radius:20px;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.bb-btn:active{background:var(--pkd)}
+
+/* MIN ORDER WARN */
+.min-warn{background:#fff3cd;border-left:3px solid #ffc107;padding:8px 12px;font-size:11px;color:#856404;display:none}
+.min-warn.show{display:block}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:flex-end;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:16px 16px 0 0;padding:20px 16px 36px;width:100%;max-width:480px}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:4px;color:#1a1a1a}
+.modal p{font-size:12px;color:#888;margin-bottom:12px}
+.modal textarea{width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;font-family:inherit;height:80px;resize:none;color:#1a1a1a}
+.modal-btns{display:flex;gap:8px;margin-top:12px}
+.modal-btns button{flex:1;padding:11px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none}
+.modal-cancel{background:#f0f0f0;color:#555}
+.modal-confirm{background:var(--pk);color:#fff}
+
+/* CART BAR */
+.cart-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--bk);border-top:2px solid var(--pk);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;z-index:20}
+.cart-bar .ct{color:#fff;font-size:14px;font-weight:500}
+.cart-bar .ci{color:#aaa;font-size:12px}
+.view-btn{background:var(--pk);color:#fff;border:none;border-radius:20px;padding:8px 18px;font-size:13px;font-weight:500;cursor:pointer}
+
+/* FORM */
+.form-section{padding:16px;background:#fff}
+.form-section h3{font-size:14px;font-weight:500;margin-bottom:12px;color:#1a1a1a}
+.field{margin-bottom:12px}
+.field label{font-size:12px;color:#666;display:block;margin-bottom:4px}
+.field input,.field textarea{width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-size:14px;font-family:inherit}
+.field textarea{height:70px;resize:none}
+.field textarea.sm{height:52px}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--pk)}
+.saved-addr{font-size:11px;color:var(--pk);margin-top:4px;cursor:pointer;display:none}
+
+/* CART SUMMARY */
+.summary-item{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid #f0f0f0;align-items:flex-start;gap:8px}
+.summary-item:last-child{border-bottom:none;font-weight:600;font-size:14px;padding-top:10px}
+.summary-left{flex:1}
+.summary-remark{font-size:11px;color:#888;margin-top:2px}
+.summary-price{color:var(--pk);font-weight:500;white-space:nowrap}
+.summary-remove{font-size:13px;color:#ddd;cursor:pointer;margin-left:4px;flex-shrink:0}
+.summary-remove:active{color:#ff5252}
+
+/* CONFIRM */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:20px}
+.confirm-overlay.show{display:flex}
+.confirm-box{background:#fff;border-radius:12px;padding:20px;width:100%;max-width:440px;max-height:80vh;overflow-y:auto}
+.confirm-box h3{font-size:16px;font-weight:600;margin-bottom:12px;color:#1a1a1a;border-bottom:2px solid var(--pk);padding-bottom:8px}
+.confirm-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid #f5f5f5;gap:8px}
+.confirm-total{display:flex;justify-content:space-between;font-size:15px;font-weight:600;padding:10px 0 0;border-top:2px solid #eee;margin-top:6px}
+.confirm-btns{display:flex;gap:8px;margin-top:16px}
+.confirm-btns button{flex:1;padding:12px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none}
+.confirm-back{background:#f0f0f0;color:#555}
+.confirm-send{background:var(--pk);color:#fff}
+.confirm-send:disabled{background:#ccc}
+
+/* BUTTONS */
+.wa-btn{display:block;width:100%;padding:14px;background:var(--bk);color:#fff;border:2px solid var(--pk);border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;text-align:center;margin-top:14px}
+.wa-btn:active{background:var(--bk2)}
+
+/* INFO */
+.info-box{background:#f9f9f9;border-left:3px solid var(--pk);padding:10px 12px;margin:12px 16px;border-radius:0 8px 8px 0;font-size:12px;color:#555;line-height:1.7}
+.info-box strong{color:#1a1a1a;font-weight:500}
+.notify{background:var(--pkl);border-left:3px solid var(--pk);padding:8px 12px;font-size:11px;color:#a01060;line-height:1.5}
+.empty{text-align:center;padding:40px 16px;color:#888;font-size:14px}
+.divider{height:8px;background:#f0f0f0;border-top:1px solid #e8e8e8;border-bottom:1px solid #e8e8e8}
+.logo-ring{width:48px;height:48px;border-radius:50%;background:var(--pk);display:inline-flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:8px}
+.pb{padding-bottom:72px}
+.search-results-label{padding:8px 16px;font-size:11px;color:#888;background:#f5f5f5;border-bottom:1px solid #eee}
+
+/* QR PAGE */
+.qr-page{padding:24px 16px;text-align:center}
+.qr-card{display:inline-block;padding:16px;background:#fff;border:2px solid var(--pk);border-radius:16px;margin-bottom:16px}
+.qr-tips{background:#fff;border-radius:8px;padding:14px;text-align:left;margin-top:12px;border-left:3px solid var(--pk)}
+.qr-tips p{font-size:12px;color:#555;line-height:2}
+
+/* TOAST */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;z-index:999;max-width:300px;text-align:center;border:1px solid var(--pk);white-space:pre-line;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,.3);pointer-events:none}
+
+/* CONTACT PAGE */
+.contact-item{display:flex;align-items:center;gap:14px;padding:14px 16px;background:#fff;border-bottom:1px solid #f0f0f0}
+.contact-icon{width:42px;height:42px;border-radius:50%;background:var(--pkl);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.contact-label{font-size:11px;color:#888}
+.contact-val{font-size:14px;font-weight:500;color:#1a1a1a}
+.contact-btn{margin-left:auto;background:var(--pk);color:#fff;border:none;border-radius:20px;padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="closed-banner" id="closed-banner" style="display:none">
+  ⚠️ 现在没有营业 · Currently closed (10am – 8:30pm)
+</div>
+
+<div class="header">
+  <div class="logo-ring">🍱</div>
+  <div class="sub">PVP Alliances × Mr Kaotim · Kampar</div>
+  <h1>在线点单 Order Here</h1>
+  <div style="margin-top:8px">
+    <span class="badge">免费送外卖 Free Delivery</span>
+    <span class="badge">🕐 10am – 8:30pm</span>
+  </div>
+  <div class="hours-status" id="hours-status"></div>
+</div>
+
+<!-- SEARCH -->
+<div class="search-wrap">
+  <span class="search-icon">🔍</span>
+  <input type="text" id="search-input" placeholder="搜索菜色 Search food..." oninput="doSearch(this.value)" autocomplete="off">
+  <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
+</div>
+
+<!-- SEARCH PAGE -->
+<div id="page-search" class="page pb">
+  <div class="search-results-label" id="search-label"></div>
+  <div id="search-results"></div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="showTab('rice')">🍚 饭</div>
+  <div class="tab" onclick="showTab('noodle')">🍜 面/粉</div>
+  <div class="tab" onclick="showTab('drinks')">🧃 饮料</div>
+  <div class="tab" onclick="showTab('snacks')">🍟 小食</div>
+  <div class="tab" onclick="showTab('cart')">🛒 Cart</div>
+  <div class="tab" onclick="showTab('qr')">📲 QR</div>
+  <div class="tab" onclick="showTab('contact')">📞 联系</div>
+</div>
+
+<!-- RICE -->
+<div id="page-rice" class="page active pb">
+  <div class="blindbox-bar">
+    <div>
+      <div style="font-size:14px;font-weight:500;color:#1a1a1a">🎲 盲盒饭 Surprise Me!</div>
+      <div style="font-size:11px;color:#888;margin-top:2px">懒得选？随机帮你配一套！</div>
+    </div>
+    <button class="bb-btn" onclick="blindBox()">随机点单 🎲</button>
+  </div>
+  <div class="section-title">经济饭套餐 Mix Rice Sets</div>
+  <div class="notify">最低消费 RM6.50 · Minimum RM6.50 for free delivery</div>
+  <div id="rice-items"></div>
+  <div class="divider"></div>
+  <div class="section-title">鸡饭 Chicken Rice — RM9</div>
+  <div id="chicken-items"></div>
+  <div class="divider"></div>
+  <div class="section-title">猪肉饭 Pork Rice — RM9</div>
+  <div id="pork-items"></div>
+  <div class="divider"></div>
+  <div class="section-title">炒饭 Fried Rice — RM8.50</div>
+  <div id="friedrice-items"></div>
+  <div class="divider"></div>
+  <div class="section-title">蛋饭 Egg Rice — RM6.50</div>
+  <div id="egg-items"></div>
+  <div class="divider"></div>
+  <div class="section-title">豆腐饭 Tofu Rice — RM8.50</div>
+  <div id="tofu-items"></div>
+</div>
+
+<!-- NOODLE -->
+<div id="page-noodle" class="page pb">
+  <div class="section-title">面/粉/河 Noodles — RM7.50–8.50</div>
+  <div id="noodle-items"></div>
+</div>
+
+<!-- DRINKS -->
+<div id="page-drinks" class="page pb">
+  <div class="section-title">饮料 Drinks</div>
+  <div id="drink-items"></div>
+  <div class="divider"></div>
+  <div class="section-title">果汁 Fruit Juice — RM3.00</div>
+  <div id="juice-items"></div>
+  <div class="divider"></div>
+  <div class="section-title">汽水 Soft Drinks — RM2.70</div>
+  <div id="softdrink-items"></div>
+  <div class="divider"></div>
+  <div class="section-title">水果 Fruit — RM1.20</div>
+  <div id="fruit-items"></div>
+</div>
+
+<!-- SNACKS -->
+<div id="page-snacks" class="page pb">
+  <div class="section-title">小食 Snacks</div>
+  <div id="snack-items"></div>
+</div>
+
+<!-- CART -->
+<div id="page-cart" class="page">
+  <div class="form-section">
+    <h3>📋 你的订单 Your Order</h3>
+    <div id="min-warn" class="min-warn">⚠️ 最低消费 RM6.50 才能免费送货 · Minimum RM6.50 for free delivery</div>
+    <div id="cart-summary"><div class="empty">购物车空的 Cart is empty</div></div>
+  </div>
+  <div class="divider"></div>
+  <div class="form-section">
+    <h3>📍 送餐资料 Delivery Info</h3>
+    <div class="field">
+      <label>姓名 Name</label>
+      <input type="text" id="f-name" placeholder="你的名字 Your name">
+    </div>
+    <div class="field">
+      <label>地址 Address *</label>
+      <textarea id="f-addr" placeholder="例: Westlake Apt, Block A, Room 203, Kampar"></textarea>
+      <span class="saved-addr" id="saved-addr-hint" onclick="loadSavedAddr()">📌 用上次的地址 Use saved address</span>
+    </div>
+    <div class="field">
+      <label>备注 Remarks (辣椒 / 餐具 / 放哪里)</label>
+      <textarea id="f-remark" class="sm" placeholder="例: no chilli, put on e-bike, cash payment"></textarea>
+    </div>
+  </div>
+  <div class="info-box">
+    <strong>💳 付款 Payment</strong><br>
+    TNG / Transfer → <strong>+60 11-2326 1377</strong><br>
+    WhatsApp 下单 (no call) → <strong>+60 11-2326 1377</strong>
+  </div>
+  <div style="padding:0 16px 80px">
+    <button class="wa-btn" onclick="showConfirm()">📋 确认订单 Review Order</button>
+  </div>
+</div>
+
+<!-- QR -->
+<div id="page-qr" class="page pb">
+  <div class="qr-page">
+    <div style="font-size:16px;font-weight:600;color:#1a1a1a;margin-bottom:4px">📲 分享点单链接</div>
+    <div style="font-size:12px;color:#888;margin-bottom:20px">截图发给朋友 · 扫码直接点单</div>
+    <div class="qr-card">
+      <img id="qr-img" src="" alt="QR Code" style="width:200px;height:200px;display:block;border-radius:4px">
+    </div>
+    <div style="font-size:11px;color:#bbb;word-break:break-all;margin-top:8px" id="qr-url-display"></div>
+    <div class="qr-tips">
+      <div style="font-size:13px;font-weight:500;color:#1a1a1a;margin-bottom:8px">📌 怎样让常客用这个页面？</div>
+      <p>
+        1️⃣ 截图 QR code 发到 WhatsApp group<br>
+        2️⃣ 把链接置顶在 group 里<br>
+        3️⃣ 告诉客人：<strong style="color:var(--pk)">用 link 点单优先处理 🚀</strong><br>
+        4️⃣ 手机加到主屏幕，像 app 一样用
+      </p>
+      <div style="margin-top:10px;background:#f9f9f9;border-radius:8px;padding:10px;font-size:12px;color:#555;line-height:1.9">
+        <strong>iPhone:</strong> Safari → 分享 → 加到主屏幕<br>
+        <strong>Android:</strong> Chrome → ⋮ → 添加到主屏幕
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTACT -->
+<div id="page-contact" class="page pb">
+  <div style="padding:14px 16px;background:#f9f9f9;border-bottom:1px solid #eee">
+    <div style="font-size:13px;color:#888">WhatsApp 打不开？直接联系我们 👇</div>
+  </div>
+  <div class="contact-item">
+    <div class="contact-icon">💬</div>
+    <div>
+      <div class="contact-label">WhatsApp 下单 (no call)</div>
+      <div class="contact-val">+60 11-2326 1377</div>
+    </div>
+    <button class="contact-btn" onclick="window.open('https://wa.me/601123261377','_blank')">开启 Open</button>
+  </div>
+  <div class="contact-item">
+    <div class="contact-icon">📞</div>
+    <div>
+      <div class="contact-label">电话 Call (紧急时才用)</div>
+      <div class="contact-val">+60 11-2326 1377</div>
+    </div>
+    <button class="contact-btn" onclick="window.location='tel:+601123261377'">拨打 Call</button>
+  </div>
+  <div class="contact-item">
+    <div class="contact-icon">🕐</div>
+    <div>
+      <div class="contact-label">营业时间 Business Hours</div>
+      <div class="contact-val">10:00am – 8:30pm</div>
+    </div>
+  </div>
+  <div class="contact-item">
+    <div class="contact-icon">📍</div>
+    <div>
+      <div class="contact-label">地区 Area</div>
+      <div class="contact-val">Kampar, Perak</div>
+    </div>
+  </div>
+  <div style="padding:14px 16px">
+    <div class="info-box" style="margin:0">
+      <strong>送货范围 Delivery Areas</strong><br>
+      Newtown · Westlake · Villa · Uni Suites · Mahsuri · KLCC · Sutera Apartment · Meadow Park · Trails of Kampar
+    </div>
+  </div>
+</div>
+
+<!-- ITEM REMARK MODAL -->
+<div class="modal-bg" id="remark-modal">
+  <div class="modal">
+    <h3 id="modal-item-name">Item</h3>
+    <p>可加备注，例: 少辣、不要葱 (Optional remark)</p>
+    <textarea id="modal-remark" placeholder="备注 Remarks (optional)"></textarea>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal()">取消 Cancel</button>
+      <button class="modal-confirm" onclick="confirmAdd()">加入购物车 Add ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM OVERLAY -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3>📋 确认订单 Confirm Order</h3>
+    <div id="confirm-content"></div>
+    <div class="confirm-btns">
+      <button class="confirm-back" onclick="closeConfirm()">← 返回修改</button>
+      <button class="confirm-send" id="confirm-send-btn" onclick="sendOrder()">📲 WhatsApp 下单</button>
+    </div>
+  </div>
+</div>
+
+<!-- CART BAR -->
+<div class="cart-bar" id="cart-bar" style="display:none">
+  <div>
+    <div class="ct" id="cart-count">0 items</div>
+    <div class="ci" id="cart-total">RM0.00</div>
+  </div>
+  <button class="view-btn" onclick="showTab('cart')">查看订单 →</button>
+</div>
+
+<script>
+var cart = {};
+var menuData = {};
+var pendingId = null;
+var currentTab = 'rice';
+var ALL_TABS = ['rice','noodle','drinks','snacks','cart','qr','contact'];
+var soldOutIds = {};
+// To mark sold out: soldOutIds['c5'] = true;
+
+var allMenus = {
+  rice:[
+    {id:'r1',name:'2菜1肉饭 2 Vege 1 Meat Rice',price:7.50,tags:['recommended']},
+    {id:'r2',name:'1菜2肉饭 1 Vege 2 Meat Rice',price:8.50},
+    {id:'r3',name:'2菜2肉饭 2 Vege 2 Meat Rice',price:9.50,tags:['recommended']},
+    {id:'r4',name:'3菜饭 3 Vege Rice',price:6.50},
+    {id:'r5',name:'1菜1肉饭 1 Vege 1 Meat Rice',price:6.50},
+    {id:'r6',name:'单点 菜/蛋/豆腐 Vege/Egg/Tofu',price:2.00},
+    {id:'r7',name:'单点 肉 Meat a la carte',price:3.00},
+    {id:'r8',name:'单点 饭 White Rice',price:1.50},
+    {id:'r9',name:'分开放饭 Rice Separate Packing',price:0.30}
+  ],
+  chicken:[
+    {id:'c1',name:'咖喱鸡饭 Curry Chicken Rice',price:9,tags:['spicy']},
+    {id:'c2',name:'麦片鸡饭 Oatmeal Chicken Rice',price:9,tags:['recommended']},
+    {id:'c3',name:'黑椒鸡饭 Black Pepper Chicken Rice',price:9},
+    {id:'c4',name:'蜜汁鸡饭 Honey Sauce Chicken Rice',price:9,tags:['recommended']},
+    {id:'c5',name:'辣子鸡饭 Spicy Chicken Rice',price:9,tags:['spicy']},
+    {id:'c6',name:'湿奶油鸡饭 Cream Chicken Rice',price:9},
+    {id:'c7',name:'甘香鸡饭 Golden Chicken Rice',price:9},
+    {id:'c8',name:'泰式鸡饭 Thai Sauce Chicken Rice',price:9,tags:['spicy']},
+    {id:'c9',name:'宫保鸡饭 Dry Chilli Chicken Rice',price:9,tags:['spicy']},
+    {id:'c10',name:'招牌鸡饭 Special Chicken Rice',price:9,tags:['recommended']},
+    {id:'c11',name:'沙律鸡饭 Salad Chicken Rice',price:9},
+    {id:'c12',name:'姜葱鸡饭 Ginger Onion Chicken Rice',price:9},
+    {id:'c13',name:'土汁鸡饭 Black Bean Chicken Rice',price:9},
+    {id:'c14',name:'咸蛋鸡饭 Salted Egg Chicken Rice',price:9},
+    {id:'c15',name:'白鸡饭 White Chicken Rice',price:9},
+    {id:'c16',name:'烧鸡饭 Roast Chicken Rice',price:9},
+    {id:'c17',name:'炸鸡腿饭 Fried Chicken Leg Rice',price:9},
+    {id:'c18',name:'鸡拌饭 Chicken Chop Rice',price:10.50}
+  ],
+  pork:[
+    {id:'p1',name:'咖喱猪肉饭 Curry Pork Rice',price:9,tags:['spicy']},
+    {id:'p2',name:'麦片猪肉饭 Oatmeal Pork Rice',price:9},
+    {id:'p3',name:'黑椒猪肉饭 Black Pepper Pork Rice',price:9},
+    {id:'p4',name:'蜜汁猪肉饭 Honey Sauce Pork Rice',price:9,tags:['recommended']},
+    {id:'p5',name:'辣子猪肉饭 Spicy Pork Rice',price:9,tags:['spicy']},
+    {id:'p6',name:'奶油猪肉饭 Cream Pork Rice',price:9},
+    {id:'p7',name:'甘香猪肉饭 Golden Pork Rice',price:9},
+    {id:'p8',name:'泰式猪肉饭 Thai Sauce Pork Rice',price:9,tags:['spicy']},
+    {id:'p9',name:'宫保猪肉饭 Dry Chilli Pork Rice',price:9,tags:['spicy']},
+    {id:'p10',name:'招牌猪肉饭 Special Pork Rice',price:9,tags:['recommended']},
+    {id:'p11',name:'沙律猪肉饭 Salad Pork Rice',price:9},
+    {id:'p12',name:'土汁猪肉饭 Black Bean Pork Rice',price:9},
+    {id:'p13',name:'咸蛋猪肉饭 Salted Egg Pork Rice',price:9},
+    {id:'p14',name:'肉拌饭 Pork Chop Rice',price:10}
+  ],
+  friedrice:[
+    {id:'fr1',name:'豆角炒饭 Long Bean Fried Rice',price:8.5},
+    {id:'fr2',name:'腊肠炒饭 Sausage Fried Rice',price:8.5},
+    {id:'fr3',name:'鸡粒炒饭 Chicken Fried Rice',price:8.5,tags:['recommended']},
+    {id:'fr4',name:'东炎炒饭 Tomyam Fried Rice',price:8.5,tags:['spicy']},
+    {id:'fr5',name:'咸鱼炒饭 Salted Fish Fried Rice',price:8.5},
+    {id:'fr6',name:'甘香炒饭 Golden Fried Rice',price:8.5},
+    {id:'fr7',name:'虾仁炒饭 Shrimp Fried Rice',price:8.5}
+  ],
+  egg:[
+    {id:'e1',name:'肉碎蛋饭 Minced Egg Rice',price:6.5},
+    {id:'e2',name:'苦瓜蛋饭 Bitter Egg Rice',price:6.5},
+    {id:'e3',name:'虾仁蛋饭 Shrimp Egg Rice',price:6.5},
+    {id:'e4',name:'豆角蛋饭 Long Bean Egg Rice',price:6.5},
+    {id:'e5',name:'大葱蛋饭 Onion Egg Rice',price:6.5},
+    {id:'e6',name:'番茄蛋饭 Tomato Egg Rice',price:6.5}
+  ],
+  tofu:[
+    {id:'t1',name:'豆腐虾饭 Tofu Shrimp Rice',price:8.5},
+    {id:'t2',name:'豆腐肉饭 Tofu Pork Rice',price:8.5},
+    {id:'t3',name:'豆腐鸡饭 Tofu Chicken Rice',price:8.5},
+    {id:'t4',name:'豆腐肉碎饭 Tofu Minced Rice',price:8.5}
+  ],
+  noodle:[
+    {id:'n1',name:'甘香伊面 Golden Yee Mee',price:7.5,tags:['recommended']},
+    {id:'n2',name:'甘香米粉 Golden Mee Hun',price:7.5},
+    {id:'n3',name:'甘香河粉 Golden Gui Tiao',price:7.5},
+    {id:'n4',name:'干炒伊面 Fried Yee Mee',price:7.5},
+    {id:'n5',name:'干炒米粉 Fried Mee Hun',price:7.5},
+    {id:'n6',name:'干炒河粉 Fried Gui Tiao',price:7.5},
+    {id:'n7',name:'黑椒伊面 Black Pepper Yee Mee',price:7.5},
+    {id:'n8',name:'黑椒米粉 Black Pepper Mee Hun',price:7.5},
+    {id:'n9',name:'福建伊面 Hokkien Yee Mee',price:7.5},
+    {id:'n10',name:'苦瓜伊面汤 Bitter Yee Mee Soup',price:7.5},
+    {id:'n11',name:'苦瓜米粉汤 Bitter Mee Hun Soup',price:7.5},
+    {id:'n12',name:'滑蛋伊面 Hua Dan Yee Mee',price:7.5},
+    {id:'n13',name:'土汁伊面 Black Bean Yee Mee',price:7.5},
+    {id:'n14',name:'紫菜伊面汤 Laver Yee Mee Soup',price:7.5},
+    {id:'n15',name:'东炎伊面汤 Tom Yam Yee Mee Soup',price:8.5,tags:['spicy']},
+    {id:'n16',name:'东炎米粉汤 Tom Yam Mee Hun Soup',price:8.5,tags:['spicy']},
+    {id:'n17',name:'东炎河粉汤 Tom Yam Gui Tiao Soup',price:8.5,tags:['spicy']}
+  ],
+  drinks:[
+    {id:'d1',name:'蜜糖柠檬 Honey Lemon',price:3,tags:['recommended']},
+    {id:'d2',name:'豆奶 Soya',price:2},
+    {id:'d3',name:'凉粉 Cincau',price:2},
+    {id:'d4',name:'黑白凉粉豆奶 Mixed Soya Cincau',price:2.5},
+    {id:'d5',name:'冬瓜 Melon',price:2},
+    {id:'d6',name:'薏米 Bali',price:2},
+    {id:'d7',name:'菊花 Chrysantemum',price:2},
+    {id:'d8',name:'Teh Ais',price:3},
+    {id:'d9',name:'Kopi Ais',price:3},
+    {id:'d10',name:'White Coffee',price:3},
+    {id:'d11',name:'Milo Ais',price:3.5}
+  ],
+  juice:[
+    {id:'j1',name:'苹果汁 Apple Juice',price:3},
+    {id:'j2',name:'橙汁 Oren Juice',price:3},
+    {id:'j3',name:'西瓜汁 Watermelon Juice',price:3},
+    {id:'j4',name:'木瓜汁 Papaya Juice',price:3},
+    {id:'j5',name:'吉子汁 Lime Juice',price:3},
+    {id:'j6',name:'罗卜汁 Carrot Juice',price:3}
+  ],
+  softdrinks:[
+    {id:'sd1',name:'Coca-Cola',price:2.7},
+    {id:'sd2',name:'100Plus',price:2.7}
+  ],
+  fruits:[
+    {id:'ft1',name:'木瓜 Papaya',price:1.2},
+    {id:'ft2',name:'菠萝 Pineapple',price:1.2},
+    {id:'ft3',name:'番石榴 Guava',price:1.2}
+  ],
+  snacks:[
+    {id:'sn1',name:'French Fries 薯条',price:7},
+    {id:'sn2',name:'Fried Sotong 炸苏东',price:12,tags:['recommended']},
+    {id:'sn3',name:'Fried Chicken 炸鸡',price:9},
+    {id:'sn4',name:'Cheese Hotdog 芝士热狗',price:2},
+    {id:'sn5',name:'Hotdog 热狗',price:1.2},
+    {id:'sn6',name:'Fried Fu Pek 炸腐皮',price:7}
+  ]
+};
+
+// Build lookup
+Object.values(allMenus).forEach(function(arr){
+  arr.forEach(function(item){ menuData[item.id]=item; });
+});
+
+// ── BUSINESS HOURS ────────────────────────────────────────────────────────
+function checkHours(){
+  var now=new Date(), mins=now.getHours()*60+now.getMinutes();
+  var isOpen=mins>=600&&mins<1230;
+  document.getElementById('hours-status').textContent=isOpen?'✅ 现在营业中 Open Now':'❌ 现在没有营业 Closed';
+  document.getElementById('hours-status').className='hours-status '+(isOpen?'open':'closed');
+  document.getElementById('closed-banner').style.display=isOpen?'none':'block';
+}
+checkHours();
+setInterval(checkHours,60000);
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function tagHTML(tags){
+  if(!tags||!tags.length)return'';
+  var map={spicy:'🌶️ Spicy',recommended:'⭐ Best',new:'🆕 New',soldout:'Sold Out'};
+  return'<div class="item-tags">'+tags.map(function(t){return'<span class="tag '+t+'">'+(map[t]||t)+'</span>';}).join('')+'</div>';
+}
+
+function itemHTML(item, qtyPrefix){
+  qtyPrefix=qtyPrefix||'';
+  var so=soldOutIds[item.id];
+  var tags=(item.tags||[]).slice();
+  if(so)tags=['soldout'];
+  var qtyId=qtyPrefix+'qty-'+item.id;
+  return'<div class="menu-item'+(so?' soldout':'')+'">' +
+    '<div class="item-left"><div class="item-name">'+item.name+'</div>'+tagHTML(tags)+'</div>'+
+    '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'+
+    '<div class="item-price">RM'+item.price.toFixed(2)+'</div>'+
+    '<div class="qty-ctrl">'+
+    '<button class="qty-btn" onclick="change(\''+item.id+'\',-1)">&#8722;</button>'+
+    '<span class="qty-num" id="'+qtyId+'">'+(cart[item.id]?cart[item.id].qty:0)+'</span>'+
+    '<button class="qty-btn" onclick="openModal(\''+item.id+'\')">+</button>'+
+    '</div></div></div>';
+}
+
+function renderItems(items,containerId){
+  var el=document.getElementById(containerId);
+  if(!el)return;
+  el.innerHTML=items.map(function(i){return itemHTML(i);}).join('');
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────
+function openModal(id){
+  pendingId=id;
+  var item=menuData[id];
+  document.getElementById('modal-item-name').textContent=item.name;
+  document.getElementById('modal-remark').value=(cart[id]&&cart[id].remark)?cart[id].remark:'';
+  document.getElementById('remark-modal').classList.add('show');
+}
+function closeModal(){
+  document.getElementById('remark-modal').classList.remove('show');
+  pendingId=null;
+}
+function confirmAdd(){
+  if(!pendingId)return;
+  var remark=document.getElementById('modal-remark').value.trim();
+  var item=menuData[pendingId];
+  if(!cart[pendingId])cart[pendingId]={item:item,qty:0,remark:''};
+  cart[pendingId].qty+=1;
+  cart[pendingId].remark=remark;
+  refreshQty(pendingId);
+  updateBar();
+  closeModal();
+}
+
+// ── QTY ───────────────────────────────────────────────────────────────────
+function change(id,delta){
+  var item=menuData[id];
+  if(!item)return;
+  if(!cart[id])cart[id]={item:item,qty:0,remark:''};
+  cart[id].qty=Math.max(0,cart[id].qty+delta);
+  if(cart[id].qty===0)delete cart[id];
+  refreshQty(id);
+  updateBar();
+}
+
+function refreshQty(id){
+  var qty=cart[id]?cart[id].qty:0;
+  // update all qty displays for this id (main + search)
+  ['qty-'+id,'sqty-'+id].forEach(function(elId){
+    var el=document.getElementById(elId);
+    if(el)el.textContent=qty;
+  });
+}
+
+function updateBar(){
+  var total=0,count=0;
+  Object.values(cart).forEach(function(c){total+=c.item.price*c.qty;count+=c.qty;});
+  document.getElementById('cart-count').textContent=count+' item'+(count!==1?'s':'');
+  document.getElementById('cart-total').textContent='RM'+total.toFixed(2);
+  document.getElementById('cart-bar').style.display=count>0?'flex':'none';
+}
+
+function cartTotal(){
+  var t=0;
+  Object.values(cart).forEach(function(c){t+=c.item.price*c.qty;});
+  return t;
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────
+function showTab(tab){
+  currentTab=tab;
+  clearSearch();
+  ALL_TABS.forEach(function(t){
+    var p=document.getElementById('page-'+t);
+    if(p)p.classList.toggle('active',t===tab);
+  });
+  document.getElementById('page-search').classList.remove('active');
+  document.querySelectorAll('.tab').forEach(function(el,i){
+    el.classList.toggle('active',ALL_TABS[i]===tab);
+  });
+  window.scrollTo(0,0);
+  if(tab==='cart'){renderCart();checkSavedAddr();}
+  if(tab==='qr'){generateQR();}
+}
+
+// ── SEARCH ────────────────────────────────────────────────────────────────
+function doSearch(q){
+  var clearBtn=document.getElementById('search-clear');
+  clearBtn.style.display=q?'block':'none';
+  if(!q.trim()){
+    document.getElementById('page-search').classList.remove('active');
+    document.getElementById('page-'+currentTab).classList.add('active');
+    return;
+  }
+  ALL_TABS.forEach(function(t){
+    var p=document.getElementById('page-'+t);
+    if(p)p.classList.remove('active');
+  });
+  document.getElementById('page-search').classList.add('active');
+  var ql=q.toLowerCase();
+  var results=[];
+  Object.values(allMenus).forEach(function(arr){
+    arr.forEach(function(item){
+      if(item.name.toLowerCase().indexOf(ql)!==-1)results.push(item);
+    });
+  });
+  document.getElementById('search-label').textContent=
+    results.length+' 个结果 result'+(results.length!==1?'s':'')+' for "'+q+'"';
+  document.getElementById('search-results').innerHTML=results.length
+    ?results.map(function(i){return itemHTML(i,'s');}).join('')
+    :'<div class="empty">没有找到 No results 😔</div>';
+}
+
+function clearSearch(){
+  document.getElementById('search-input').value='';
+  document.getElementById('search-clear').style.display='none';
+  document.getElementById('page-search').classList.remove('active');
+  document.getElementById('page-'+currentTab).classList.add('active');
+}
+
+// ── SAVED ADDRESS ─────────────────────────────────────────────────────────
+function checkSavedAddr(){
+  var saved=localStorage.getItem('pvp_addr');
+  document.getElementById('saved-addr-hint').style.display=saved?'inline-block':'none';
+}
+function loadSavedAddr(){
+  var saved=localStorage.getItem('pvp_addr');
+  if(saved)document.getElementById('f-addr').value=saved;
+}
+
+// ── CART RENDER ───────────────────────────────────────────────────────────
+function renderCart(){
+  var el=document.getElementById('cart-summary');
+  var keys=Object.keys(cart);
+  var total=cartTotal();
+  // Min order warning
+  var warn=document.getElementById('min-warn');
+  warn.className='min-warn'+(total>0&&total<6.5?' show':'');
+  if(!keys.length){el.innerHTML='<div class="empty">购物车空的<br>Cart is empty</div>';return;}
+  var html='';
+  keys.forEach(function(k){
+    var c=cart[k];var sub=c.item.price*c.qty;
+    html+='<div class="summary-item">'+
+      '<div class="summary-left">'+
+      '<div class="summary-name">'+c.item.name+' x'+c.qty+'</div>'+
+      (c.remark?'<div class="summary-remark">📝 '+c.remark+'</div>':'')+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:4px">'+
+      '<span class="summary-price">RM'+sub.toFixed(2)+'</span>'+
+      '<span class="summary-remove" onclick="removeItem(\''+k+'\')">✕</span>'+
+      '</div></div>';
+  });
+  html+='<div class="summary-item"><span>Total 总共</span><span style="color:var(--pk)">RM'+total.toFixed(2)+'</span></div>';
+  el.innerHTML=html;
+}
+
+function removeItem(id){
+  delete cart[id];
+  refreshQty(id);
+  updateBar();
+  renderCart();
+}
+
+// ── CONFIRM ───────────────────────────────────────────────────────────────
+function showConfirm(){
+  var keys=Object.keys(cart);
+  if(!keys.length){showToast('请先选择食物！\nPlease add items first!');return;}
+  var addr=document.getElementById('f-addr').value.trim();
+  if(!addr){showToast('请填写地址！\nPlease enter your address!');return;}
+  var total=cartTotal();
+  if(total<6.5){showToast('最低消费 RM6.50 才能免费送货\nMinimum RM6.50 for delivery');return;}
+  var name=document.getElementById('f-name').value.trim();
+  var remark=document.getElementById('f-remark').value.trim();
+  var html='';
+  if(name)html+='<div class="confirm-row"><span>👤 Name</span><span>'+name+'</span></div>';
+  html+='<div class="confirm-row"><span>📍 Address</span><span style="text-align:right;max-width:200px">'+addr+'</span></div>';
+  html+='<div style="margin:10px 0 4px;font-size:11px;color:#888;letter-spacing:.5px">ORDER</div>';
+  keys.forEach(function(k){
+    var c=cart[k];var sub=c.item.price*c.qty;
+    html+='<div class="confirm-row"><span>'+c.item.name+' x'+c.qty+(c.remark?'<br><small style="color:#aaa">📝 '+c.remark+'</small>':'')+'</span><span>RM'+sub.toFixed(2)+'</span></div>';
+  });
+  html+='<div class="confirm-total"><span>💰 Total</span><span style="color:var(--pk)">RM'+total.toFixed(2)+'</span></div>';
+  if(remark)html+='<div style="margin-top:10px;font-size:12px;color:#888;background:#f9f9f9;padding:8px;border-radius:6px">📝 '+remark+'</div>';
+  document.getElementById('confirm-content').innerHTML=html;
+  document.getElementById('confirm-overlay').classList.add('show');
+}
+function closeConfirm(){
+  document.getElementById('confirm-overlay').classList.remove('show');
+  document.getElementById('confirm-send-btn').disabled=false;
+  document.getElementById('confirm-send-btn').textContent='📲 WhatsApp 下单';
+}
+
+// ── SEND ORDER ────────────────────────────────────────────────────────────
+function sendOrder(){
+  var btn=document.getElementById('confirm-send-btn');
+  btn.disabled=true;
+  btn.textContent='正在发送... Sending...';
+  var keys=Object.keys(cart);
+  var addr=document.getElementById('f-addr').value.trim();
+  var name=document.getElementById('f-name').value.trim();
+  var remark=document.getElementById('f-remark').value.trim();
+  localStorage.setItem('pvp_addr',addr); // save address
+  var total=0;
+  var msg='🍱 *PVP x Mr Kaotim Order*\n';
+  if(name)msg+='👤 '+name+'\n';
+  msg+='📍 '+addr+'\n\n';
+  keys.forEach(function(k){
+    var c=cart[k];var sub=c.item.price*c.qty;total+=sub;
+    msg+=c.item.name+' x'+c.qty+' - RM'+sub.toFixed(2);
+    if(c.remark)msg+=' ('+c.remark+')';
+    msg+='\n';
+  });
+  msg+='\n💰 *Total: RM'+total.toFixed(2)+'*';
+  msg+='\n💳 TNG: +60 11-2326 1377';
+  if(remark)msg+='\n📝 '+remark;
+  setTimeout(function(){
+    window.open('https://wa.me/601123261377?text='+encodeURIComponent(msg),'_blank');
+    closeConfirm();
+    btn.disabled=false;
+    btn.textContent='📲 WhatsApp 下单';
+  },300);
+}
+
+// ── BLIND BOX ─────────────────────────────────────────────────────────────
+function blindBox(){
+  var mains=allMenus.chicken.concat(allMenus.pork).filter(function(i){return!soldOutIds[i.id];});
+  var drinks=allMenus.drinks.filter(function(i){return!soldOutIds[i.id];});
+  var main=mains[Math.floor(Math.random()*mains.length)];
+  var drink=drinks[Math.floor(Math.random()*drinks.length)];
+  // Clear cart
+  Object.keys(cart).forEach(function(k){delete cart[k];});
+  document.querySelectorAll('.qty-num').forEach(function(el){el.textContent='0';});
+  // Add selections
+  cart[main.id]={item:main,qty:1,remark:''};
+  cart[drink.id]={item:drink,qty:(cart[drink.id]?cart[drink.id].qty:0)+1,remark:''};
+  refreshQty(main.id);
+  refreshQty(drink.id);
+  updateBar();
+  showToast('🎲 盲盒饭结果！\n\n🍱 '+main.name+'\n🧃 '+drink.name+'\n\n💰 RM'+(main.price+drink.price).toFixed(2)+'\n\n已加入购物车 ✓');
+}
+
+// ── QR CODE ───────────────────────────────────────────────────────────────
+function generateQR(){
+  var url=window.location.href.split('#')[0].split('?')[0];
+  document.getElementById('qr-url-display').textContent=url;
+  document.getElementById('qr-img').src=
+    'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+
+    encodeURIComponent(url)+'&color=e91e8c&bgcolor=ffffff&margin=2';
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg){
+  var old=document.getElementById('toast');
+  if(old)old.remove();
+  var t=document.createElement('div');
+  t.id='toast';t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(function(){if(t.parentNode)t.remove();},3500);
+}
+
+// Close overlays on bg tap
+document.getElementById('remark-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('confirm-overlay').addEventListener('click',function(e){if(e.target===this)closeConfirm();});
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+renderItems(allMenus.rice,'rice-items');
+renderItems(allMenus.chicken,'chicken-items');
+renderItems(allMenus.pork,'pork-items');
+renderItems(allMenus.friedrice,'friedrice-items');
+renderItems(allMenus.egg,'egg-items');
+renderItems(allMenus.tofu,'tofu-items');
+renderItems(allMenus.noodle,'noodle-items');
+renderItems(allMenus.drinks,'drink-items');
+renderItems(allMenus.juice,'juice-items');
+renderItems(allMenus.softdrinks,'softdrink-items');
+renderItems(allMenus.fruits,'fruit-items');
+renderItems(allMenus.snacks,'snack-items');
+checkSavedAddr();
+</script>
+</body>
+</html>
